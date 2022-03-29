@@ -1,5 +1,5 @@
 const BASEURL = '';
-const WEBSOCKET_PORT = '8082';
+const WEBSOCKET_PORT = '';
 export {
   BASEURL,
   WEBSOCKET_PORT,

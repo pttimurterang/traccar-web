@@ -25,8 +25,10 @@ const SocketController = () => {
   const connectSocket = () => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     let { host } = window.location;
-    if (!host.endsWith(`:${WEBSOCKET_PORT}`)) {
-      host += `:${WEBSOCKET_PORT}`;
+    if (WEBSOCKET_PORT.length > 0) {
+      if (!host.endsWith(`:${WEBSOCKET_PORT}`)) {
+        host += `:${WEBSOCKET_PORT}`;
+      }
     }
     const socket = new WebSocket(`${protocol}//${host}/api/socket`);
     socketRef.current = socket;
