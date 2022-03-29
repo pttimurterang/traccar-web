@@ -20,6 +20,7 @@ import { useEffectAsync } from './reactHelper';
 import { formatPosition } from './common/formatter';
 import { getDevices, getPosition } from './common/selectors';
 import { useTranslation } from './LocalizationProvider';
+import { BASEURL } from './constant';
 
 const useStyles = makeStyles((theme) => ({
   list: {
@@ -147,7 +148,7 @@ const DeviceView = ({ updateTimestamp, onMenuClick, filter }) => {
   }
 
   useEffectAsync(async () => {
-    const response = await fetch('/api/devices');
+    const response = await fetch(`${BASEURL}/api/devices`);
     if (response.ok) {
       dispatch(devicesActions.refresh(await response.json()));
     }

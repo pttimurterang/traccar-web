@@ -9,6 +9,7 @@ import { sessionActions } from '../../store';
 import { useLocalization, useTranslation } from '../../LocalizationProvider';
 import StartPage from '../../StartPage';
 import usePersistedState from '../../common/usePersistedState';
+import { BASEURL } from '../../constant';
 
 const useStyles = makeStyles((theme) => ({
   logoContainer: {
@@ -40,7 +41,7 @@ const LoginForm = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const response = await fetch('/api/session', {
+    const response = await fetch(`${BASEURL}/api/session`, {
       method: 'POST',
       body: new URLSearchParams(`email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`),
     });

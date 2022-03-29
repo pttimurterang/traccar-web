@@ -7,6 +7,7 @@ import { positionsActions, devicesActions, sessionActions } from './store';
 import { useEffectAsync } from './reactHelper';
 import { useTranslation } from './LocalizationProvider';
 import { prefixString } from './common/stringUtils';
+import { BASEURL, WEBSOCKET_PORT } from './constant';
 
 const SocketController = () => {
   const dispatch = useDispatch();
@@ -23,7 +24,11 @@ const SocketController = () => {
 
   const connectSocket = () => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socket = new WebSocket(`${protocol}//${window.location.host}/api/socket`);
+    let { host } = window.location;
+    if (!host.endsWith(`:${WEBSOCKET_PORT}`)) {
+      host += `:${WEBSOCKET_PORT}`;
+    }
+    const socket = new WebSocket(`${protocol}//${host}/api/socket`);
     socketRef.current = socket;
 
     socket.onerror = () => {
@@ -45,7 +50,7 @@ const SocketController = () => {
   };
 
   useEffectAsync(async () => {
-    const response = await fetch('/api/server');
+    const response = await fetch(`${BASEURL}/api/server`);
     if (response.ok) {
       dispatch(sessionActions.updateServer(await response.json()));
     }
@@ -53,7 +58,7 @@ const SocketController = () => {
 
   useEffectAsync(async () => {
     if (authenticated) {
-      const response = await fetch('/api/devices');
+      const response = await fetch(`${BASEURL}/api/devices`);
       if (response.ok) {
         dispatch(devicesActions.refresh(await response.json()));
       }
@@ -65,7 +70,7 @@ const SocketController = () => {
         }
       };
     }
-    const response = await fetch('/api/session');
+    const response = await fetch(`${BASEURL}/api/session`);
     if (response.ok) {
       dispatch(sessionActions.updateUser(await response.json()));
     } else {

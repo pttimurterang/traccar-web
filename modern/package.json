@@ -31,7 +31,7 @@
     "wellknown": "^0.5.0"
   },
   "scripts": {
-    "start": "craco start",
+    "start": "craco --openssl-legacy-provider start",
     "build": "craco build",
     "build_release": "PUBLIC_URL=/modern/ craco build",
     "test": "craco test",
