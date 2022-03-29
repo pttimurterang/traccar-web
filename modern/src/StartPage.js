@@ -57,7 +57,7 @@ const StartPage = ({ children }) => {
           {!useMediaQuery(theme.breakpoints.down('md'))
             && (
             <svg height="64" width="240">
-              <use xlinkHref="/logo.svg#img" />
+              <use xlinkHref="/timurterang-logo-white.svg#img" />
             </svg>
             )}
         </div>
