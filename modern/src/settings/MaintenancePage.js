@@ -1,22 +1,35 @@
 import React, { useState } from 'react';
 import {
-  Accordion, AccordionSummary, AccordionDetails, makeStyles, Typography, TextField, FormControl, InputLabel, MenuItem, Select,
-} from '@material-ui/core';
-import InputAdornment from '@material-ui/core/InputAdornment';
-import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import { prefixString } from '../common/stringUtils';
-import EditItemView from '../EditItemView';
-import EditAttributesView from '../attributes/EditAttributesView';
-import { useAttributePreference } from '../common/preferences';
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Typography,
+  TextField,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+} from '@mui/material';
+import makeStyles from '@mui/styles/makeStyles';
+import InputAdornment from '@mui/material/InputAdornment';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { prefixString } from '../common/util/stringUtils';
+import EditItemView from './components/EditItemView';
+import EditAttributesView from './components/EditAttributesView';
+import { useAttributePreference } from '../common/util/preferences';
 import {
   speedFromKnots, speedToKnots, distanceFromMeters, distanceToMeters,
-} from '../common/converter';
-import { useTranslation } from '../LocalizationProvider';
-import usePositionAttributes from '../attributes/usePositionAttributes';
+} from '../common/util/converter';
+import { useTranslation } from '../common/components/LocalizationProvider';
+import usePositionAttributes from '../common/attributes/usePositionAttributes';
+import SettingsMenu from './components/SettingsMenu';
 
-const useStyles = makeStyles(() => ({
+const useStyles = makeStyles((theme) => ({
   details: {
+    display: 'flex',
     flexDirection: 'column',
+    gap: theme.spacing(2),
+    paddingBottom: theme.spacing(3),
   },
 }));
 
@@ -94,10 +107,18 @@ const MaintenancePage = () => {
     return value;
   };
 
+  const validate = () => item && item.name && item.type && item.start && item.period;
+
   return (
-    <EditItemView endpoint="maintenance" item={item} setItem={setItem}>
-      {item
-        && (
+    <EditItemView
+      endpoint="maintenance"
+      item={item}
+      setItem={setItem}
+      validate={validate}
+      menu={<SettingsMenu />}
+      breadcrumbs={['settingsTitle', 'sharedMaintenance']}
+    >
+      {item && (
         <>
           <Accordion defaultExpanded>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -107,15 +128,14 @@ const MaintenancePage = () => {
             </AccordionSummary>
             <AccordionDetails className={classes.details}>
               <TextField
-                margin="normal"
                 value={item.name || ''}
                 onChange={(event) => setItem({ ...item, name: event.target.value })}
                 label={t('sharedName')}
-                variant="filled"
               />
-              <FormControl variant="filled" margin="normal" fullWidth>
+              <FormControl>
                 <InputLabel>{t('sharedType')}</InputLabel>
                 <Select
+                  label={t('sharedType')}
                   value={item.type || ''}
                   onChange={onMaintenanceTypeChange}
                 >
@@ -125,23 +145,19 @@ const MaintenancePage = () => {
                 </Select>
               </FormControl>
               <TextField
-                margin="normal"
                 type="number"
                 value={rawToValue(item.start) || ''}
                 onChange={(event) => setItem({ ...item, start: valueToRaw(event.target.value) })}
                 label={t('maintenanceStart')}
-                variant="filled"
                 InputProps={{
                   endAdornment: <InputAdornment position="start">{labels.start}</InputAdornment>,
                 }}
               />
               <TextField
-                margin="normal"
                 type="number"
                 value={rawToValue(item.period) || ''}
                 onChange={(event) => setItem({ ...item, period: valueToRaw(event.target.value) })}
                 label={t('maintenancePeriod')}
-                variant="filled"
                 InputProps={{
                   endAdornment: <InputAdornment position="start">{labels.period}</InputAdornment>,
                 }}
@@ -163,7 +179,7 @@ const MaintenancePage = () => {
             </AccordionDetails>
           </Accordion>
         </>
-        )}
+      )}
     </EditItemView>
   );
 };

@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
-import TextField from '@material-ui/core/TextField';
+import TextField from '@mui/material/TextField';
 import {
-  Accordion, AccordionSummary, AccordionDetails, makeStyles, Typography,
-} from '@material-ui/core';
-import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import { DropzoneArea } from 'material-ui-dropzone';
-import EditItemView from '../EditItemView';
-import EditAttributesView from '../attributes/EditAttributesView';
-import { useTranslation } from '../LocalizationProvider';
+  Accordion, AccordionSummary, AccordionDetails, Typography,
+} from '@mui/material';
+import makeStyles from '@mui/styles/makeStyles';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { DropzoneArea } from 'react-mui-dropzone';
+import EditItemView from './components/EditItemView';
+import EditAttributesView from './components/EditAttributesView';
+import { useTranslation } from '../common/components/LocalizationProvider';
+import SettingsMenu from './components/SettingsMenu';
+import components from '../common/theme/components';
 
-const useStyles = makeStyles(() => ({
+const useStyles = makeStyles((theme) => ({
   details: {
+    display: 'flex',
     flexDirection: 'column',
+    gap: theme.spacing(2),
+    paddingBottom: theme.spacing(3),
   },
 }));
 
@@ -34,10 +40,18 @@ const CalendarPage = () => {
     }
   };
 
+  const validate = () => item && item.name && item.data;
+
   return (
-    <EditItemView endpoint="calendars" item={item} setItem={setItem}>
-      {item
-        && (
+    <EditItemView
+      endpoint="calendars"
+      item={item}
+      setItem={setItem}
+      validate={validate}
+      menu={<SettingsMenu />}
+      breadcrumbs={['settingsTitle', 'sharedCalendar']}
+    >
+      {item && (
         <>
           <Accordion defaultExpanded>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -47,15 +61,14 @@ const CalendarPage = () => {
             </AccordionSummary>
             <AccordionDetails className={classes.details}>
               <TextField
-                margin="normal"
                 value={item.name || ''}
                 onChange={(event) => setItem({ ...item, name: event.target.value })}
                 label={t('sharedName')}
-                variant="filled"
               />
               <DropzoneArea
                 filesLimit={1}
                 onChange={handleFiles}
+                alertSnackbarProps={components.MuiSnackbar.defaultProps}
               />
             </AccordionDetails>
           </Accordion>
@@ -74,7 +87,7 @@ const CalendarPage = () => {
             </AccordionDetails>
           </Accordion>
         </>
-        )}
+      )}
     </EditItemView>
   );
 };

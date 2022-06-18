@@ -1,34 +1,39 @@
 import React, { useState } from 'react';
 import {
-  TableContainer, Table, TableRow, TableCell, TableHead, TableBody, makeStyles, IconButton,
-} from '@material-ui/core';
-import MoreVertIcon from '@material-ui/icons/MoreVert';
+  Table, TableRow, TableCell, TableHead, TableBody,
+} from '@mui/material';
+import makeStyles from '@mui/styles/makeStyles';
 import { useEffectAsync } from '../reactHelper';
-import EditCollectionView from '../EditCollectionView';
-import { prefixString } from '../common/stringUtils';
-import { formatBoolean } from '../common/formatter';
-import OptionsLayout from './OptionsLayout';
-import { useTranslation } from '../LocalizationProvider';
+import { prefixString } from '../common/util/stringUtils';
+import { formatBoolean } from '../common/util/formatter';
+import { useTranslation } from '../common/components/LocalizationProvider';
+import PageLayout from '../common/components/PageLayout';
+import SettingsMenu from './components/SettingsMenu';
+import CollectionFab from './components/CollectionFab';
+import CollectionActions from './components/CollectionActions';
 
 const useStyles = makeStyles((theme) => ({
   columnAction: {
-    width: theme.spacing(1),
-    padding: theme.spacing(0, 1),
+    width: '1%',
+    paddingRight: theme.spacing(1),
   },
 }));
 
-const NotificationsView = ({ updateTimestamp, onMenuClick }) => {
+const NotificationsPage = () => {
   const classes = useStyles();
   const t = useTranslation();
 
+  const [timestamp, setTimestamp] = useState(Date.now());
   const [items, setItems] = useState([]);
 
   useEffectAsync(async () => {
     const response = await fetch('/api/notifications');
     if (response.ok) {
       setItems(await response.json());
+    } else {
+      throw Error(await response.text());
     }
-  }, [updateTimestamp]);
+  }, [timestamp]);
 
   const formatList = (prefix, value) => {
     if (value) {
@@ -42,41 +47,34 @@ const NotificationsView = ({ updateTimestamp, onMenuClick }) => {
   };
 
   return (
-    <TableContainer>
+    <PageLayout menu={<SettingsMenu />} breadcrumbs={['settingsTitle', 'sharedNotifications']}>
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell className={classes.columnAction} />
             <TableCell>{t('notificationType')}</TableCell>
             <TableCell>{t('notificationAlways')}</TableCell>
             <TableCell>{t('sharedAlarms')}</TableCell>
             <TableCell>{t('notificationNotificators')}</TableCell>
+            <TableCell className={classes.columnAction} />
           </TableRow>
         </TableHead>
         <TableBody>
           {items.map((item) => (
             <TableRow key={item.id}>
-              <TableCell className={classes.columnAction} padding="none">
-                <IconButton onClick={(event) => onMenuClick(event.currentTarget, item.id)}>
-                  <MoreVertIcon />
-                </IconButton>
-              </TableCell>
               <TableCell>{t(prefixString('event', item.type))}</TableCell>
               <TableCell>{formatBoolean(item.always, t)}</TableCell>
               <TableCell>{formatList('alarm', item.attributes.alarms)}</TableCell>
               <TableCell>{formatList('notificator', item.notificators)}</TableCell>
+              <TableCell className={classes.columnAction} padding="none">
+                <CollectionActions itemId={item.id} editPath="/settings/notification" endpoint="notifications" setTimestamp={setTimestamp} />
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </TableContainer>
+      <CollectionFab editPath="/settings/notification" />
+    </PageLayout>
   );
 };
-
-const NotificationsPage = () => (
-  <OptionsLayout>
-    <EditCollectionView content={NotificationsView} editPath="/settings/notification" endpoint="notifications" />
-  </OptionsLayout>
-);
 
 export default NotificationsPage;

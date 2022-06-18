@@ -15,6 +15,8 @@ const CachingController = () => {
       const response = await fetch(`${BASEURL}/api/geofences`);
       if (response.ok) {
         dispatch(geofencesActions.update(await response.json()));
+      } else {
+        throw Error(await response.text());
       }
     }
   }, [authenticated]);
@@ -24,6 +26,8 @@ const CachingController = () => {
       const response = await fetch(`${BASEURL}/api/groups`);
       if (response.ok) {
         dispatch(groupsActions.update(await response.json()));
+      } else {
+        throw Error(await response.text());
       }
     }
   }, [authenticated]);
@@ -33,6 +37,8 @@ const CachingController = () => {
       const response = await fetch(`${BASEURL}/api/drivers`);
       if (response.ok) {
         dispatch(driversActions.update(await response.json()));
+      } else {
+        throw Error(await response.text());
       }
     }
   }, [authenticated]);
@@ -42,6 +48,8 @@ const CachingController = () => {
       const response = await fetch(`${BASEURL}/api/maintenance`);
       if (response.ok) {
         dispatch(maintenancesActions.update(await response.json()));
+      } else {
+        throw Error(await response.text());
       }
     }
   }, [authenticated]);

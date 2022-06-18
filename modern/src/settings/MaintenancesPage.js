@@ -1,30 +1,32 @@
 import React, { useState } from 'react';
 import {
-  TableContainer, Table, TableRow, TableCell, TableHead, TableBody, makeStyles, IconButton,
-} from '@material-ui/core';
-import MoreVertIcon from '@material-ui/icons/MoreVert';
+  Table, TableRow, TableCell, TableHead, TableBody,
+} from '@mui/material';
+import makeStyles from '@mui/styles/makeStyles';
 import { useEffectAsync } from '../reactHelper';
-import EditCollectionView from '../EditCollectionView';
-
-import usePositionAttributes from '../attributes/usePositionAttributes';
-import { formatDistance, formatSpeed } from '../common/formatter';
-import { useAttributePreference } from '../common/preferences';
-import OptionsLayout from './OptionsLayout';
-import { useTranslation } from '../LocalizationProvider';
+import usePositionAttributes from '../common/attributes/usePositionAttributes';
+import { formatDistance, formatSpeed } from '../common/util/formatter';
+import { useAttributePreference } from '../common/util/preferences';
+import { useTranslation } from '../common/components/LocalizationProvider';
+import PageLayout from '../common/components/PageLayout';
+import SettingsMenu from './components/SettingsMenu';
+import CollectionFab from './components/CollectionFab';
+import CollectionActions from './components/CollectionActions';
 
 const useStyles = makeStyles((theme) => ({
   columnAction: {
-    width: theme.spacing(1),
-    padding: theme.spacing(0, 1),
+    width: '1%',
+    paddingRight: theme.spacing(1),
   },
 }));
 
-const MaintenancesView = ({ updateTimestamp, onMenuClick }) => {
+const MaintenacesPage = () => {
   const classes = useStyles();
   const t = useTranslation();
 
   const positionAttributes = usePositionAttributes(t);
 
+  const [timestamp, setTimestamp] = useState(Date.now());
   const [items, setItems] = useState([]);
   const speedUnit = useAttributePreference('speedUnit');
   const distanceUnit = useAttributePreference('distanceUnit');
@@ -33,8 +35,10 @@ const MaintenancesView = ({ updateTimestamp, onMenuClick }) => {
     const response = await fetch('/api/maintenance');
     if (response.ok) {
       setItems(await response.json());
+    } else {
+      throw Error(await response.text());
     }
-  }, [updateTimestamp]);
+  }, [timestamp]);
 
   const convertAttribute = (key, value) => {
     const attribute = positionAttributes[key];
@@ -53,41 +57,34 @@ const MaintenancesView = ({ updateTimestamp, onMenuClick }) => {
   };
 
   return (
-    <TableContainer>
+    <PageLayout menu={<SettingsMenu />} breadcrumbs={['settingsTitle', 'sharedMaintenance']}>
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell className={classes.columnAction} />
             <TableCell>{t('sharedName')}</TableCell>
             <TableCell>{t('sharedType')}</TableCell>
             <TableCell>{t('maintenanceStart')}</TableCell>
             <TableCell>{t('maintenancePeriod')}</TableCell>
+            <TableCell className={classes.columnAction} />
           </TableRow>
         </TableHead>
         <TableBody>
           {items.map((item) => (
             <TableRow key={item.id}>
-              <TableCell className={classes.columnAction} padding="none">
-                <IconButton onClick={(event) => onMenuClick(event.currentTarget, item.id)}>
-                  <MoreVertIcon />
-                </IconButton>
-              </TableCell>
               <TableCell>{item.name}</TableCell>
               <TableCell>{item.type}</TableCell>
               <TableCell>{convertAttribute(item.type, item.start)}</TableCell>
               <TableCell>{convertAttribute(item.type, item.period)}</TableCell>
+              <TableCell className={classes.columnAction} padding="none">
+                <CollectionActions itemId={item.id} editPath="/settings/maintenance" endpoint="maintenance" setTimestamp={setTimestamp} />
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </TableContainer>
+      <CollectionFab editPath="/settings/maintenance" />
+    </PageLayout>
   );
 };
-
-const MaintenacesPage = () => (
-  <OptionsLayout>
-    <EditCollectionView content={MaintenancesView} editPath="/settings/maintenance" endpoint="maintenance" />
-  </OptionsLayout>
-);
 
 export default MaintenacesPage;

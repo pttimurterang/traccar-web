@@ -1,65 +1,63 @@
 import React, { useState } from 'react';
 import {
-  TableContainer, Table, TableRow, TableCell, TableHead, TableBody, makeStyles, IconButton,
-} from '@material-ui/core';
-import MoreVertIcon from '@material-ui/icons/MoreVert';
+  Table, TableRow, TableCell, TableHead, TableBody,
+} from '@mui/material';
+import makeStyles from '@mui/styles/makeStyles';
 import { useEffectAsync } from '../reactHelper';
-import EditCollectionView from '../EditCollectionView';
-import OptionsLayout from './OptionsLayout';
-import { useTranslation } from '../LocalizationProvider';
+import { useTranslation } from '../common/components/LocalizationProvider';
+import PageLayout from '../common/components/PageLayout';
+import SettingsMenu from './components/SettingsMenu';
+import CollectionFab from './components/CollectionFab';
+import CollectionActions from './components/CollectionActions';
 
 const useStyles = makeStyles((theme) => ({
   columnAction: {
-    width: theme.spacing(1),
-    padding: theme.spacing(0, 1),
+    width: '1%',
+    paddingRight: theme.spacing(1),
   },
 }));
 
-const DriversView = ({ updateTimestamp, onMenuClick }) => {
+const DriversPage = () => {
   const classes = useStyles();
   const t = useTranslation();
 
+  const [timestamp, setTimestamp] = useState(Date.now());
   const [items, setItems] = useState([]);
 
   useEffectAsync(async () => {
     const response = await fetch('/api/drivers');
     if (response.ok) {
       setItems(await response.json());
+    } else {
+      throw Error(await response.text());
     }
-  }, [updateTimestamp]);
+  }, [timestamp]);
 
   return (
-    <TableContainer>
+    <PageLayout menu={<SettingsMenu />} breadcrumbs={['settingsTitle', 'sharedDrivers']}>
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell className={classes.columnAction} />
             <TableCell>{t('sharedName')}</TableCell>
             <TableCell>{t('deviceIdentifier')}</TableCell>
+            <TableCell className={classes.columnAction} />
           </TableRow>
         </TableHead>
         <TableBody>
           {items.map((item) => (
             <TableRow key={item.id}>
-              <TableCell className={classes.columnAction} padding="none">
-                <IconButton onClick={(event) => onMenuClick(event.currentTarget, item.id)}>
-                  <MoreVertIcon />
-                </IconButton>
-              </TableCell>
               <TableCell>{item.name}</TableCell>
               <TableCell>{item.uniqueId}</TableCell>
+              <TableCell className={classes.columnAction} padding="none">
+                <CollectionActions itemId={item.id} editPath="/settings/driver" endpoint="drivers" setTimestamp={setTimestamp} />
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </TableContainer>
+      <CollectionFab editPath="/settings/driver" />
+    </PageLayout>
   );
 };
-
-const DriversPage = () => (
-  <OptionsLayout>
-    <EditCollectionView content={DriversView} editPath="/settings/driver" endpoint="drivers" />
-  </OptionsLayout>
-);
 
 export default DriversPage;

@@ -1,19 +1,78 @@
 import React, { useState } from 'react';
-import { DataGrid } from '@material-ui/data-grid';
-import { useTheme } from '@material-ui/core/styles';
 import {
-  formatDistance, formatSpeed, formatHours, formatDate, formatVolume,
-} from '../common/formatter';
-import ReportFilter from './ReportFilter';
-import ReportLayout from './ReportLayout';
-import { useAttributePreference } from '../common/preferences';
-import { useTranslation } from '../LocalizationProvider';
+  IconButton, Table, TableBody, TableCell, TableHead, TableRow,
+} from '@mui/material';
+import GpsFixedIcon from '@mui/icons-material/GpsFixed';
+import LocationSearchingIcon from '@mui/icons-material/LocationSearching';
+import {
+  formatDistance, formatSpeed, formatHours, formatVolume, formatTime,
+} from '../common/util/formatter';
+import ReportFilter from './components/ReportFilter';
+import { useAttributePreference } from '../common/util/preferences';
+import { useTranslation } from '../common/components/LocalizationProvider';
+import PageLayout from '../common/components/PageLayout';
+import ReportsMenu from './components/ReportsMenu';
+import ColumnSelect from './components/ColumnSelect';
+import usePersistedState from '../common/util/usePersistedState';
+import { useCatch, useEffectAsync } from '../reactHelper';
+import useReportStyles from './common/useReportStyles';
+import MapView from '../map/core/MapView';
+import MapRoutePath from '../map/MapRoutePath';
+import AddressValue from '../common/components/AddressValue';
 
-const Filter = ({ setItems }) => {
-  const handleSubmit = async (deviceId, from, to, mail, headers) => {
-    const query = new URLSearchParams({
-      deviceId, from, to, mail,
-    });
+const columnsArray = [
+  ['startTime', 'reportStartTime'],
+  ['startOdometer', 'reportStartOdometer'],
+  ['startAddress', 'reportStartAddress'],
+  ['endTime', 'reportEndTime'],
+  ['endOdometer', 'reportEndOdometer'],
+  ['endAddress', 'reportEndAddress'],
+  ['distance', 'sharedDistance'],
+  ['averageSpeed', 'reportAverageSpeed'],
+  ['maxSpeed', 'reportMaximumSpeed'],
+  ['duration', 'reportDuration'],
+  ['spentFuel', 'reportSpentFuel'],
+  ['driverName', 'sharedDriver'],
+];
+const columnsMap = new Map(columnsArray);
+
+const TripReportPage = () => {
+  const classes = useReportStyles();
+  const t = useTranslation();
+
+  const distanceUnit = useAttributePreference('distanceUnit');
+  const speedUnit = useAttributePreference('speedUnit');
+  const volumeUnit = useAttributePreference('volumeUnit');
+
+  const [columns, setColumns] = usePersistedState('tripColumns', ['startTime', 'endTime', 'distance', 'averageSpeed']);
+  const [items, setItems] = useState([]);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [route, setRoute] = useState(null);
+
+  useEffectAsync(async () => {
+    if (selectedItem) {
+      const query = new URLSearchParams({
+        deviceId: selectedItem.deviceId,
+        from: selectedItem.startTime,
+        to: selectedItem.endTime,
+      });
+      const response = await fetch(`/api/reports/route?${query.toString()}`, {
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+      if (response.ok) {
+        setRoute(await response.json());
+      } else {
+        throw Error(await response.text());
+      }
+    } else {
+      setRoute(null);
+    }
+  }, [selectedItem]);
+
+  const handleSubmit = useCatch(async ({ deviceId, from, to, mail, headers }) => {
+    const query = new URLSearchParams({ deviceId, from, to, mail });
     const response = await fetch(`/api/reports/trips?${query.toString()}`, { headers });
     if (response.ok) {
       const contentType = response.headers.get('content-type');
@@ -24,107 +83,85 @@ const Filter = ({ setItems }) => {
           window.location.assign(window.URL.createObjectURL(await response.blob()));
         }
       }
+    } else {
+      throw Error(await response.text());
+    }
+  });
+
+  const formatValue = (item, key) => {
+    switch (key) {
+      case 'startTime':
+      case 'endTime':
+        return formatTime(item[key], 'YYYY-MM-DD HH:mm');
+      case 'startOdometer':
+      case 'endOdometer':
+      case 'distance':
+        return formatDistance(item[key], distanceUnit, t);
+      case 'averageSpeed':
+      case 'maxSpeed':
+        return formatSpeed(item[key], speedUnit, t);
+      case 'duration':
+        return formatHours(item[key]);
+      case 'spentFuel':
+        return formatVolume(item[key], volumeUnit, t);
+      case 'startAddress':
+        return (<AddressValue latitude={item.startLat} longitude={item.startLon} originalAddress={item[key]} />);
+      case 'endAddress':
+        return (<AddressValue latitude={item.endLat} longitude={item.endLon} originalAddress={item[key]} />);
+      default:
+        return item[key];
     }
   };
 
-  return <ReportFilter handleSubmit={handleSubmit} />;
-};
-
-const TripReportPage = () => {
-  const theme = useTheme();
-  const t = useTranslation();
-
-  const distanceUnit = useAttributePreference('distanceUnit');
-  const speedUnit = useAttributePreference('speedUnit');
-  const volumeUnit = useAttributePreference('volumeUnit');
-
-  const [items, setItems] = useState([]);
-
-  const columns = [{
-    headerName: t('reportStartTime'),
-    field: 'startTime',
-    type: 'dateTime',
-    width: theme.dimensions.columnWidthDate,
-    valueFormatter: ({ value }) => formatDate(value),
-  }, {
-    headerName: t('reportStartOdometer'),
-    field: 'startOdometer',
-    type: 'number',
-    width: theme.dimensions.columnWidthNumber,
-    valueFormatter: ({ value }) => formatDistance(value, distanceUnit, t),
-  }, {
-    headerName: t('reportStartAddress'),
-    field: 'startAddress',
-    type: 'string',
-    hide: true,
-    width: theme.dimensions.columnWidthString,
-  }, {
-    headerName: t('reportEndTime'),
-    field: 'endTime',
-    type: 'dateTime',
-    width: theme.dimensions.columnWidthDate,
-    valueFormatter: ({ value }) => formatDate(value),
-  }, {
-    headerName: t('reportEndOdometer'),
-    field: 'endOdometer',
-    type: 'number',
-    width: theme.dimensions.columnWidthNumber,
-    valueFormatter: ({ value }) => formatDistance(value, distanceUnit, t),
-  }, {
-    headerName: t('reportEndAddress'),
-    field: 'endAddress',
-    type: 'string',
-    hide: true,
-    width: theme.dimensions.columnWidthString,
-  }, {
-    headerName: t('sharedDistance'),
-    field: 'distance',
-    type: 'number',
-    width: theme.dimensions.columnWidthNumber,
-    valueFormatter: ({ value }) => formatDistance(value, distanceUnit, t),
-  }, {
-    headerName: t('reportAverageSpeed'),
-    field: 'averageSpeed',
-    type: 'number',
-    width: theme.dimensions.columnWidthNumber,
-    valueFormatter: ({ value }) => formatSpeed(value, speedUnit, t),
-  }, {
-    headerName: t('reportMaximumSpeed'),
-    field: 'maxSpeed',
-    type: 'number',
-    width: theme.dimensions.columnWidthNumber,
-    valueFormatter: ({ value }) => formatSpeed(value, speedUnit, t),
-  }, {
-    headerName: t('reportDuration'),
-    field: 'duration',
-    type: 'string',
-    width: theme.dimensions.columnWidthString,
-    valueFormatter: ({ value }) => formatHours(value),
-  }, {
-    headerName: t('reportSpentFuel'),
-    field: 'spentFuel',
-    type: 'number',
-    width: theme.dimensions.columnWidthNumber,
-    hide: true,
-    valueFormatter: ({ value }) => formatVolume(value, volumeUnit, t),
-  }, {
-    headerName: t('sharedDriver'),
-    field: 'driverName',
-    type: 'string',
-    width: theme.dimensions.columnWidthString,
-    hide: true,
-  }];
-
   return (
-    <ReportLayout filter={<Filter setItems={setItems} />}>
-      <DataGrid
-        rows={items}
-        columns={columns}
-        hideFooter
-        autoHeight
-        getRowId={() => Math.random()}
-      />
-    </ReportLayout>
+    <PageLayout menu={<ReportsMenu />} breadcrumbs={['reportTitle', 'reportTrips']}>
+      <div className={classes.container}>
+        {selectedItem && (
+          <div className={classes.containerMap}>
+            <MapView>
+              {route && <MapRoutePath positions={route} />}
+            </MapView>
+          </div>
+        )}
+        <div className={classes.containerMain}>
+          <div className={classes.header}>
+            <ReportFilter handleSubmit={handleSubmit}>
+              <ColumnSelect columns={columns} setColumns={setColumns} columnsArray={columnsArray} />
+            </ReportFilter>
+          </div>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell className={classes.columnAction} />
+                {columns.map((key) => (<TableCell key={key}>{t(columnsMap.get(key))}</TableCell>))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {items.map((item) => (
+                <TableRow key={item.startPositionId}>
+                  <TableCell className={classes.columnAction} padding="none">
+                    {selectedItem === item ? (
+                      <IconButton size="small" onClick={() => setSelectedItem(null)}>
+                        <GpsFixedIcon fontSize="small" />
+                      </IconButton>
+                    ) : (
+                      <IconButton size="small" onClick={() => setSelectedItem(item)}>
+                        <LocationSearchingIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </TableCell>
+                  {columns.map((key) => (
+                    <TableCell key={key}>
+                      {formatValue(item, key)}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    </PageLayout>
   );
 };
 

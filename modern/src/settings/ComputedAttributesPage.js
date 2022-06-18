@@ -1,74 +1,71 @@
 import React, { useState } from 'react';
 import {
-  TableContainer, Table, TableRow, TableCell, TableHead, TableBody, makeStyles, IconButton,
-} from '@material-ui/core';
-import MoreVertIcon from '@material-ui/icons/MoreVert';
-import { useSelector } from 'react-redux';
+  Table, TableRow, TableCell, TableHead, TableBody,
+} from '@mui/material';
+import makeStyles from '@mui/styles/makeStyles';
 import { useEffectAsync } from '../reactHelper';
-import EditCollectionView from '../EditCollectionView';
-import OptionsLayout from './OptionsLayout';
-import { useTranslation } from '../LocalizationProvider';
+import { useTranslation } from '../common/components/LocalizationProvider';
+import { useAdministrator } from '../common/util/permissions';
+import PageLayout from '../common/components/PageLayout';
+import SettingsMenu from './components/SettingsMenu';
+import CollectionFab from './components/CollectionFab';
+import CollectionActions from './components/CollectionActions';
 
 const useStyles = makeStyles((theme) => ({
   columnAction: {
-    width: theme.spacing(1),
-    padding: theme.spacing(0, 1),
+    width: '1%',
+    paddingRight: theme.spacing(1),
   },
 }));
 
-const ComputedAttributeView = ({ updateTimestamp, onMenuClick }) => {
+const ComputedAttributesPage = () => {
   const classes = useStyles();
   const t = useTranslation();
 
+  const [timestamp, setTimestamp] = useState(Date.now());
   const [items, setItems] = useState([]);
-  const adminEnabled = useSelector((state) => state.session.user && state.session.user.administrator);
+  const administrator = useAdministrator();
 
   useEffectAsync(async () => {
     const response = await fetch('/api/attributes/computed');
     if (response.ok) {
       setItems(await response.json());
+    } else {
+      throw Error(await response.text());
     }
-  }, [updateTimestamp]);
+  }, [timestamp]);
 
   return (
-    <TableContainer>
+    <PageLayout menu={<SettingsMenu />} breadcrumbs={['settingsTitle', 'sharedComputedAttributes']}>
       <Table>
         <TableHead>
           <TableRow>
-            {adminEnabled && <TableCell className={classes.columnAction} />}
             <TableCell>{t('sharedDescription')}</TableCell>
             <TableCell>{t('sharedAttribute')}</TableCell>
             <TableCell>{t('sharedExpression')}</TableCell>
             <TableCell>{t('sharedType')}</TableCell>
+            {administrator && <TableCell className={classes.columnAction} />}
           </TableRow>
         </TableHead>
         <TableBody>
           {items.map((item) => (
             <TableRow key={item.id}>
-              {adminEnabled
-              && (
-              <TableCell className={classes.columnAction} padding="none">
-                <IconButton onClick={(event) => onMenuClick(event.currentTarget, item.id)}>
-                  <MoreVertIcon />
-                </IconButton>
-              </TableCell>
-              )}
               <TableCell>{item.description}</TableCell>
               <TableCell>{item.attribute}</TableCell>
               <TableCell>{item.expression}</TableCell>
               <TableCell>{item.type}</TableCell>
+              {administrator && (
+                <TableCell className={classes.columnAction} padding="none">
+                  <CollectionActions itemId={item.id} editPath="/settings/attribute" endpoint="attributes/computed" setTimestamp={setTimestamp} />
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </TableContainer>
+      <CollectionFab editPath="/settings/attribute" />
+    </PageLayout>
   );
 };
-
-const ComputedAttributesPage = () => (
-  <OptionsLayout>
-    <EditCollectionView content={ComputedAttributeView} editPath="/settings/attribute" endpoint="attributes/computed" />
-  </OptionsLayout>
-);
 
 export default ComputedAttributesPage;

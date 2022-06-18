@@ -1,15 +1,28 @@
 import React, { useState } from 'react';
 import {
-  Accordion, AccordionSummary, AccordionDetails, makeStyles, Typography, FormControl, InputLabel, MenuItem, Select, TextField,
-} from '@material-ui/core';
-import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import EditItemView from '../EditItemView';
-import { useTranslation } from '../LocalizationProvider';
-import usePositionAttributes from '../attributes/usePositionAttributes';
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Typography,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+} from '@mui/material';
+import makeStyles from '@mui/styles/makeStyles';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import EditItemView from './components/EditItemView';
+import { useTranslation } from '../common/components/LocalizationProvider';
+import usePositionAttributes from '../common/attributes/usePositionAttributes';
+import SettingsMenu from './components/SettingsMenu';
 
-const useStyles = makeStyles(() => ({
+const useStyles = makeStyles((theme) => ({
   details: {
+    display: 'flex',
     flexDirection: 'column',
+    gap: theme.spacing(2),
+    paddingBottom: theme.spacing(3),
   },
 }));
 
@@ -39,10 +52,18 @@ const ComputedAttributePage = () => {
     }
   };
 
+  const validate = () => item && item.description && item.expression;
+
   return (
-    <EditItemView endpoint="/attributes/computed" item={item} setItem={setItem}>
-      {item
-        && (
+    <EditItemView
+      endpoint="attributes/computed"
+      item={item}
+      setItem={setItem}
+      validate={validate}
+      menu={<SettingsMenu />}
+      breadcrumbs={['settingsTitle', 'sharedComputedAttribute']}
+    >
+      {item && (
         <Accordion defaultExpanded>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="subtitle1">
@@ -51,15 +72,14 @@ const ComputedAttributePage = () => {
           </AccordionSummary>
           <AccordionDetails className={classes.details}>
             <TextField
-              margin="normal"
               value={item.description || ''}
               onChange={(event) => setItem({ ...item, description: event.target.value })}
               label={t('sharedDescription')}
-              variant="filled"
             />
-            <FormControl variant="filled" margin="normal" fullWidth>
+            <FormControl>
               <InputLabel>{t('sharedAttribute')}</InputLabel>
               <Select
+                label={t('sharedAttribute')}
                 value={item.attribute || ''}
                 onChange={handleChange}
               >
@@ -69,22 +89,16 @@ const ComputedAttributePage = () => {
               </Select>
             </FormControl>
             <TextField
-              margin="normal"
               value={item.expression || ''}
               onChange={(event) => setItem({ ...item, expression: event.target.value })}
               label={t('sharedExpression')}
               multiline
               rows={4}
-              variant="filled"
             />
-            <FormControl
-              variant="filled"
-              margin="normal"
-              fullWidth
-              disabled={key in positionAttributes}
-            >
+            <FormControl disabled={key in positionAttributes}>
               <InputLabel>{t('sharedType')}</InputLabel>
               <Select
+                label={t('sharedType')}
                 value={item.type || ''}
                 onChange={(event) => setItem({ ...item, type: event.target.value })}
               >
@@ -95,7 +109,7 @@ const ComputedAttributePage = () => {
             </FormControl>
           </AccordionDetails>
         </Accordion>
-        )}
+      )}
     </EditItemView>
   );
 };

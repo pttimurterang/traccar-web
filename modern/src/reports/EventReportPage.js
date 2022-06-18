@@ -1,25 +1,61 @@
 import React, { useState } from 'react';
-import { DataGrid } from '@material-ui/data-grid';
 import {
-  Grid, FormControl, InputLabel, Select, MenuItem,
-} from '@material-ui/core';
-import { useTheme } from '@material-ui/core/styles';
+  FormControl, InputLabel, Select, MenuItem, Table, TableHead, TableRow, TableCell, TableBody,
+} from '@mui/material';
 import { useSelector } from 'react-redux';
-import { formatDate } from '../common/formatter';
-import ReportFilter from './ReportFilter';
-import ReportLayout from './ReportLayout';
-import { prefixString } from '../common/stringUtils';
-import { useTranslation } from '../LocalizationProvider';
+import { formatTime } from '../common/util/formatter';
+import ReportFilter from './components/ReportFilter';
+import { prefixString } from '../common/util/stringUtils';
+import { useTranslation } from '../common/components/LocalizationProvider';
+import PageLayout from '../common/components/PageLayout';
+import ReportsMenu from './components/ReportsMenu';
+import usePersistedState from '../common/util/usePersistedState';
+import ColumnSelect from './components/ColumnSelect';
+import { useCatch } from '../reactHelper';
+import useReportStyles from './common/useReportStyles';
 
-const Filter = ({ setItems }) => {
+const typesArray = [
+  ['allEvents', 'eventAll'],
+  ['deviceOnline', 'eventDeviceOnline'],
+  ['deviceUnknown', 'eventDeviceUnknown'],
+  ['deviceOffline', 'eventDeviceOffline'],
+  ['deviceInactive', 'eventDeviceInactive'],
+  ['deviceMoving', 'eventDeviceMoving'],
+  ['deviceStopped', 'eventDeviceStopped'],
+  ['deviceOverspeed', 'eventDeviceOverspeed'],
+  ['deviceFuelDrop', 'eventDeviceFuelDrop'],
+  ['commandResult', 'eventCommandResult'],
+  ['geofenceEnter', 'eventGeofenceEnter'],
+  ['geofenceExit', 'eventGeofenceExit'],
+  ['alarm', 'eventAlarm'],
+  ['ignitionOn', 'eventIgnitionOn'],
+  ['ignitionOff', 'eventIgnitionOff'],
+  ['maintenance', 'eventMaintenance'],
+  ['textMessage', 'eventTextMessage'],
+  ['driverChanged', 'eventDriverChanged'],
+];
+
+const columnsArray = [
+  ['eventTime', 'positionFixTime'],
+  ['type', 'sharedType'],
+  ['geofenceId', 'sharedGeofence'],
+  ['maintenanceId', 'sharedMaintenance'],
+  ['alarm', 'positionAlarm'],
+];
+const columnsMap = new Map(columnsArray);
+
+const EventReportPage = () => {
+  const classes = useReportStyles();
   const t = useTranslation();
 
-  const [eventTypes, setEventTypes] = useState(['allEvents']);
+  const geofences = useSelector((state) => state.geofences.items);
 
-  const handleSubmit = async (deviceId, from, to, mail, headers) => {
-    const query = new URLSearchParams({
-      deviceId, from, to, mail,
-    });
+  const [columns, setColumns] = usePersistedState('eventColumns', ['eventTime', 'type', 'alarm']);
+  const [eventTypes, setEventTypes] = useState(['allEvents']);
+  const [items, setItems] = useState([]);
+
+  const handleSubmit = useCatch(async ({ deviceId, from, to, mail, headers }) => {
+    const query = new URLSearchParams({ deviceId, from, to, mail });
     eventTypes.forEach((it) => query.append('type', it));
     const response = await fetch(`/api/reports/events?${query.toString()}`, { headers });
     if (response.ok) {
@@ -31,89 +67,80 @@ const Filter = ({ setItems }) => {
           window.location.assign(window.URL.createObjectURL(await response.blob()));
         }
       }
+    } else {
+      throw Error(await response.text());
+    }
+  });
+
+  const formatValue = (item, key) => {
+    switch (key) {
+      case 'eventTime':
+        return formatTime(item[key]);
+      case 'type':
+        return t(prefixString('event', item[key]));
+      case 'geofenceId':
+        if (item[key] > 0) {
+          const geofence = geofences[item[key]];
+          return geofence && geofence.name;
+        }
+        return null;
+      case 'maintenanceId':
+        return item[key] > 0 ? item[key] > 0 : null;
+      case 'alarm':
+        return item.attributes[key] ? t(prefixString('alarm', item.attributes[key])) : null;
+      default:
+        return item[key];
     }
   };
 
   return (
-    <ReportFilter handleSubmit={handleSubmit}>
-      <Grid item xs={12} sm={6}>
-        <FormControl variant="filled" fullWidth>
-          <InputLabel>{t('reportEventTypes')}</InputLabel>
-          <Select value={eventTypes} onChange={(e) => setEventTypes(e.target.value)} multiple>
-            <MenuItem value="allEvents">{t('eventAll')}</MenuItem>
-            <MenuItem value="deviceOnline">{t('eventDeviceOnline')}</MenuItem>
-            <MenuItem value="deviceUnknown">{t('eventDeviceUnknown')}</MenuItem>
-            <MenuItem value="deviceOffline">{t('eventDeviceOffline')}</MenuItem>
-            <MenuItem value="deviceInactive">{t('eventDeviceInactive')}</MenuItem>
-            <MenuItem value="deviceMoving">{t('eventDeviceMoving')}</MenuItem>
-            <MenuItem value="deviceStopped">{t('eventDeviceStopped')}</MenuItem>
-            <MenuItem value="deviceOverspeed">{t('eventDeviceOverspeed')}</MenuItem>
-            <MenuItem value="deviceFuelDrop">{t('eventDeviceFuelDrop')}</MenuItem>
-            <MenuItem value="commandResult">{t('eventCommandResult')}</MenuItem>
-            <MenuItem value="geofenceEnter">{t('eventGeofenceEnter')}</MenuItem>
-            <MenuItem value="geofenceExit">{t('eventGeofenceExit')}</MenuItem>
-            <MenuItem value="alarm">{t('eventAlarm')}</MenuItem>
-            <MenuItem value="ignitionOn">{t('eventIgnitionOn')}</MenuItem>
-            <MenuItem value="ignitionOff">{t('eventIgnitionOff')}</MenuItem>
-            <MenuItem value="maintenance">{t('eventMaintenance')}</MenuItem>
-            <MenuItem value="textMessage">{t('eventTextMessage')}</MenuItem>
-            <MenuItem value="driverChanged">{t('eventDriverChanged')}</MenuItem>
-          </Select>
-        </FormControl>
-      </Grid>
-    </ReportFilter>
-  );
-};
-
-const EventReportPage = () => {
-  const theme = useTheme();
-  const t = useTranslation();
-
-  const geofences = useSelector((state) => state.geofences.items);
-
-  const [items, setItems] = useState([]);
-
-  const formatGeofence = (value) => {
-    if (value > 0) {
-      const geofence = geofences[value];
-      return geofence ? geofence.name : '';
-    }
-    return null;
-  };
-
-  const columns = [{
-    headerName: t('positionFixTime'),
-    field: 'serverTime',
-    type: 'dateTime',
-    width: theme.dimensions.columnWidthDate,
-    valueFormatter: ({ value }) => formatDate(value),
-  }, {
-    headerName: t('sharedType'),
-    field: 'type',
-    type: 'string',
-    width: theme.dimensions.columnWidthString,
-    valueFormatter: ({ value }) => t(prefixString('event', value)),
-  }, {
-    headerName: t('sharedGeofence'),
-    field: 'geofenceId',
-    width: theme.dimensions.columnWidthString,
-    valueFormatter: ({ value }) => formatGeofence(value),
-  }, {
-    headerName: t('sharedMaintenance'),
-    field: 'maintenanceId',
-    type: 'number',
-    width: theme.dimensions.columnWidthString,
-  }];
-
-  return (
-    <ReportLayout filter={<Filter setItems={setItems} />}>
-      <DataGrid
-        rows={items}
-        columns={columns}
-        hideFooter
-        autoHeight
-      />
-    </ReportLayout>
+    <PageLayout menu={<ReportsMenu />} breadcrumbs={['reportTitle', 'reportEvents']}>
+      <div className={classes.header}>
+        <ReportFilter handleSubmit={handleSubmit}>
+          <div className={classes.filterItem}>
+            <FormControl fullWidth>
+              <InputLabel>{t('reportEventTypes')}</InputLabel>
+              <Select
+                label={t('reportEventTypes')}
+                value={eventTypes}
+                onChange={(event, child) => {
+                  let values = event.target.value;
+                  const clicked = child.props.value;
+                  if (values.includes('allEvents') && values.length > 1) {
+                    values = [clicked];
+                  }
+                  setEventTypes(values);
+                }}
+                multiple
+              >
+                {typesArray.map(([key, string]) => (
+                  <MenuItem key={key} value={key}>{t(string)}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </div>
+          <ColumnSelect columns={columns} setColumns={setColumns} columnsArray={columnsArray} />
+        </ReportFilter>
+      </div>
+      <Table>
+        <TableHead>
+          <TableRow>
+            {columns.map((key) => (<TableCell key={key}>{t(columnsMap.get(key))}</TableCell>))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {items.map((item) => (
+            <TableRow key={item.id}>
+              {columns.map((key) => (
+                <TableCell key={key}>
+                  {formatValue(item, key)}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </PageLayout>
   );
 };
 
